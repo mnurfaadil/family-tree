@@ -1,0 +1,26 @@
+{
+  "name": "family-tree",
+  "version": "1.0.0",
+  "description": "A privacy-first, offline-capable family tree editor that encrypts all data locally using AES-256-GCM. No backend, no database, no data leaves your browser.",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i css/source.css -o css/tailwind.css",
+    "build": "npm run build:css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mnurfaadil/family-tree.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mnurfaadil/family-tree/issues"
+  },
+  "homepage": "https://github.com/mnurfaadil/family-tree#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.1",
+    "tailwindcss": "^4.3.1"
+  }
+}

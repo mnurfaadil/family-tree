@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A privacy-first, offline-capable family tree editor. Encrypt and manage your family genealogy locally in your browser.">
+  <meta name="keywords" content="family tree, genealogy, family history, encrypted, offline, privacy, silsilah, pohon keluarga">
+  <meta name="author" content="mnurfaadil">
+  <meta name="theme-color" content="#0f172a">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Family Tree">
+  <meta property="og:description" content="A privacy-first, offline-capable family tree editor. Encrypt and manage your family genealogy locally in your browser.">
+  <meta property="og:url" content="https://mnurfaadil.github.io/family-tree/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Family Tree">
+  <meta name="twitter:description" content="A privacy-first, offline-capable family tree editor. Encrypt and manage your family genealogy locally in your browser.">
+  <link rel="canonical" href="https://mnurfaadil.github.io/family-tree/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Family Tree",
+    "description": "A privacy-first, offline-capable family tree editor with AES-256-GCM encryption.",
+    "applicationCategory": "Lifestyle",
+    "operatingSystem": "All",
+    "browserRequirements": "Requires JavaScript with Web Crypto API",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "mnurfaadil"
+    }
+  }
+  </script>
+  <title id="page-title">Family Tree</title>
+  <link href="css/tailwind.css" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    #tree-container { width: 100%; height: 100%; min-height: 400px; overflow: hidden; position: relative; }
+    #tree-container svg { width: 100%; height: 100%; }
+    .tree-tooltip {
+      position: absolute; background: #1e293b; color: #e2e8f0;
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      pointer-events: none; z-index: 50; max-width: 260px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid #334155;
+    }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; backdrop-filter: blur(2px);
+    }
+    .modal-box {
+      background: #1e293b; border-radius: 10px; padding: 20px;
+      width: 92%; max-width: 400px; border: 1px solid #334155;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .form-input {
+      width: 100%; padding: 6px 10px; border-radius: 5px;
+      border: 1px solid #475569; background: #0f172a;
+      color: #e2e8f0; font-size: 13px; outline: none;
+    }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .form-select {
+      width: 100%; padding: 6px 10px; border-radius: 5px;
+      border: 1px solid #475569; background: #0f172a;
+      color: #e2e8f0; font-size: 13px; outline: none;
+    }
+    .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .btn {
+      padding: 5px 12px; border-radius: 5px; font-size: 12px;
+      font-weight: 500; cursor: pointer; border: none;
+      transition: all 0.15s ease; white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.15); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-warning { background: #f59e0b; color: #fff; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #475569; }
+    .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+    .btn-merge { background: #7c3aed; color: #fff; }
+    .btn-merge:hover { background: #8b5cf6; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 9999px;
+      font-size: 11px; font-weight: 500;
+    }
+    .badge-blue { background: #1e40af; color: #93c5fd; }
+    .lang-btn {
+      background: transparent; border: 1px solid #475569; color: #94a3b8;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer;
+      font-size: 12px; transition: all 0.15s;
+    }
+    .lang-btn:hover { border-color: #3b82f6; color: #93c5fd; }
+    .lang-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+    .ctx-menu {
+      position: fixed; z-index: 300; background: #1e293b; border: 1px solid #475569;
+      border-radius: 8px; padding: 4px 0; min-width: 140px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .ctx-menu-item {
+      padding: 8px 16px; font-size: 13px; cursor: pointer; color: #e2e8f0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ctx-menu-item:hover { background: #334155; }
+    .ctx-menu-item.danger { color: #f87171; }
+    .ctx-menu-item.danger:hover { background: #3b1a1a; }
+    .ctx-menu-sep { height: 1px; background: #334155; margin: 4px 0; }
+    .header-dropdown-btn {
+      background: transparent; border: 1px solid #475569; color: #94a3b8;
+      padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 14px; line-height: 1;
+      transition: all 0.15s;
+    }
+    .header-dropdown-btn:hover { border-color: #3b82f6; color: #93c5fd; background: #1e293b; }
+    .sidebar-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+    #sidebar {
+      transition: width 0.25s ease, padding 0.25s ease, transform 0.25s ease;
+      overflow: hidden; white-space: nowrap;
+    }
+    #sidebar.hidden-sidebar {
+      width: 0 !important; padding: 0; border: none; overflow: hidden; flex: 0 0 0;
+    }
+    #sidebar.mobile-sidebar {
+      position: fixed; left: 0; top: 56px; bottom: 0; z-index: 45; width: 15rem !important;
+      transform: translateX(-100%); border-right: 1px solid #334155;
+    }
+    #sidebar.mobile-sidebar.show {
+      transform: translateX(0);
+    }
+    @media (max-width: 639px) {
+      header { padding-left: 8px; padding-right: 8px; }
+      #tree-container { min-height: calc(100vh - 48px); }
+    }
+    .fab { display: none; }
+    @media (max-width: 639px) {
+      .fab { display: flex; }
+    }
+    .fab-fixed-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: #fff; margin-bottom: 4px;
+      transition: transform 0.15s; flex-shrink: 0;
+    }
+    .fab-fixed-btn:active { transform: scale(0.9); }
+    .fab-fixed-btn.edit { background: #eab308; }
+    .fab-fixed-btn.delete { background: #ef4444; }
+    .fab-toggle {
+      width: 48px; height: 48px; border-radius: 50%; background: #3b82f6; color: #fff;
+      border: none; cursor: pointer; font-size: 22px; display: flex; align-items: center;
+      justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: transform 0.2s;
+      position: relative; z-index: 2;
+    }
+    .fab-toggle.open { transform: rotate(45deg); }
+    .fab-actions {
+      position: absolute; bottom: 60px; right: 0; display: flex; flex-direction: column;
+      align-items: center; gap: 8px; opacity: 0; pointer-events: none; transform: translateY(10px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .fab-actions.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .fab-action {
+      width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: transform 0.15s; color: #fff;
+    }
+    .fab-action:active { transform: scale(0.9); }
+    .fab-action.add { background: #22c55e; }
+    .fab-action.reset { background: #a855f7; }
+    .fab-action.save { background: #3b82f6; }
+    .fab-action.edit { background: #eab308; }
+    .fab-action.delete { background: #ef4444; }
+    .fab-backdrop {
+      position: fixed; inset: 0; z-index: 49; background: transparent; display: none;
+    }
+    .fab-backdrop.show { display: block; }
+    .searchable-select { position: relative; }
+    .searchable-select input { cursor: pointer; }
+    .searchable-select .ss-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+      background: #0f172a; border: 1px solid #475569; border-radius: 6px;
+      max-height: 180px; overflow-y: auto; display: none; margin-top: 2px;
+    }
+    .searchable-select .ss-dropdown.show { display: block; }
+    .searchable-select .ss-option {
+      padding: 5px 10px; cursor: pointer; font-size: 12px; color: #cbd5e1;
+    }
+    .searchable-select .ss-option:hover,
+    .searchable-select .ss-option.highlighted { background: #1e293b; color: #fff; }
+    .searchable-select .ss-option.selected { color: #60a5fa; font-weight: 600; }
+    .searchable-select .ss-option.empty { color: #64748b; font-style: italic; cursor: default; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex flex-col">
+  <header class="bg-slate-800 border-b border-slate-700 px-2 sm:px-3 py-2 flex items-center justify-between flex-shrink-0 gap-1">
+    <div class="flex items-center gap-1 sm:gap-2 min-w-0">
+      <span class="text-xl leading-none flex-shrink-0">🌳</span>
+      <h1 id="app-title" class="text-sm font-bold text-white leading-none truncate hidden sm:inline">Family Tree</h1>
+      <span id="member-count" class="badge badge-blue text-[10px] leading-none flex-shrink-0 hidden sm:inline">0 members</span>
+      <button id="sidebar-toggle" class="header-dropdown-btn ml-0.5 flex-shrink-0 hidden sm:inline" title="Toggle sidebar">☷</button>
+    </div>
+    <div class="flex items-center gap-1 sm:gap-1.5">
+      <div class="items-center gap-0.5 mr-0.5 sm:mr-1 border-r border-slate-600 pr-1 sm:pr-1.5 hidden sm:flex">
+        <button id="lang-en" class="lang-btn active" onclick="I18n.setLang('en');UI.refreshUI()">EN</button>
+        <button id="lang-id" class="lang-btn" onclick="I18n.setLang('id');UI.refreshUI()">ID</button>
+      </div>
+      <button onclick="UI.newMember()" id="btn-add" class="btn btn-primary hidden sm:inline">+ Add Member</button>
+      <button onclick="UI.saveLocal()" id="btn-save" class="btn btn-success hidden sm:inline">Save</button>
+      <div class="relative" id="header-dropdown-wrapper">
+        <button id="header-dropdown-toggle" class="header-dropdown-btn">⋯</button>
+        <div id="header-dropdown-menu" class="ctx-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;min-width:160px;">
+          <div class="ctx-menu-item" data-action="add">+ Add Member</div>
+          <div class="ctx-menu-item" data-action="save">Save</div>
+          <div class="ctx-menu-sep"></div>
+          <div class="ctx-menu-item" data-action="load">Load</div>
+          <div class="ctx-menu-item" data-action="export">Export</div>
+          <div class="ctx-menu-item" data-action="import">Import</div>
+          <div class="ctx-menu-item" data-action="merge">Merge</div>
+          <div class="ctx-menu-sep"></div>
+          <div class="ctx-menu-item" data-action="sidebar">☷ Sidebar</div>
+          <div class="ctx-menu-item" data-action="reset">⟲ Reset Layout</div>
+          <div class="ctx-menu-sep"></div>
+          <div class="ctx-menu-item" data-action="lang-en">EN</div>
+          <div class="ctx-menu-item" data-action="lang-id">ID</div>
+          <div class="ctx-menu-sep"></div>
+          <div class="ctx-menu-item danger" data-action="new">New</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="UI.toggleSidebar()"></div>
+    <aside id="sidebar" class="w-60 bg-slate-800 border-r border-slate-700 flex flex-col overflow-hidden flex-shrink-0">
+      <div class="p-2 border-b border-slate-700">
+        <div class="relative">
+          <input id="search-input" type="text" placeholder="Search members..." oninput="UI.searchMembers(this.value)"
+            class="form-input pl-7 text-xs">
+          <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">🔍</span>
+        </div>
+      </div>
+      <div id="search-results" class="flex-1 overflow-y-auto p-1.5 space-y-0.5"></div>
+      <div id="member-detail" class="border-t border-slate-700 p-2 overflow-y-auto max-h-36"></div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden bg-slate-950">
+      <div id="tree-container" class="flex-1"></div>
+    </main>
+  </div>
+
+  <div id="modal-area"></div>
+
+  <div id="fab-backdrop" class="fab-backdrop"></div>
+  <div id="fab-cond" style="position:fixed;bottom:82px;right:20px;display:flex;flex-direction:column;align-items:center;z-index:49;gap:4px;">
+    <button id="fab-edit" class="fab-fixed-btn edit" onclick="UI.editMember(UI.getActiveId())" title="Edit" style="display:none">✏️</button>
+    <button id="fab-delete" class="fab-fixed-btn delete" onclick="UI.confirmDeleteMember(UI.getActiveId())" title="Delete" style="display:none">🗑️</button>
+  </div>
+  <div id="fab" class="fab" style="position:fixed;bottom:20px;right:20px;flex-direction:column;align-items:center;z-index:50;">
+    <div id="fab-actions" class="fab-actions">
+      <button class="fab-action reset" onclick="UI.resetLayout()" title="Reset Layout">⟲</button>
+      <button class="fab-action add" onclick="UI.newMember()" title="Add Member">+</button>
+      <button class="fab-action save" onclick="UI.saveLocal()" title="Save">💾</button>
+    </div>
+    <button id="fab-toggle" class="fab-toggle">+</button>
+  </div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/tree.js"></script>
+  <script>
+    function __(key, ...args) {
+      return I18n.t(key, ...args);
+    }
+
+    const UI = (() => {
+      let activeMemberId = null;
+      let searchTimeout = null;
+
+      function init() {
+        TreeVisualizer.init('tree-container', onTreeClick, onTreeContextMenu);
+        sidebarVisible = window.innerWidth < 768 ? false : true;
+        handleSidebarResize();
+        refreshUI();
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') { closeModal(); hideContextMenu(); }
+        });
+      }
+
+      function onTreeContextMenu(id, event) {
+        if (id) {
+          const m = App.getMember(id);
+          if (!m) return;
+          showContextMenu(event.clientX, event.clientY, id, 'member');
+        } else {
+          showContextMenu(event.clientX, event.clientY, null, 'canvas');
+        }
+      }
+
+      function showContextMenu(x, y, memberId, type) {
+        hideContextMenu();
+        const menu = document.createElement('div');
+        menu.className = 'ctx-menu';
+        menu.id = 'ctx-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+
+        if (type === 'member') {
+          menu.innerHTML = `
+            <div class="ctx-menu-item" data-action="edit">\u270E ${__('detail.edit')}</div>
+            <div class="ctx-menu-sep"></div>
+            <div class="ctx-menu-item danger" data-action="delete">\u2716 ${__('detail.delete')}</div>
+          `;
+          menu.querySelector('[data-action="edit"]').addEventListener('click', () => {
+            hideContextMenu();
+            editMember(memberId);
+          });
+          menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+            hideContextMenu();
+            confirmDeleteMember(memberId);
+          });
+        } else {
+          menu.innerHTML = `
+            <div class="ctx-menu-item" data-action="reset-layout">⟲ ${__('tree.resetLayout')}</div>
+          `;
+          menu.querySelector('[data-action="reset-layout"]').addEventListener('click', () => {
+            hideContextMenu();
+            resetLayout();
+          });
+        }
+
+        document.body.appendChild(menu);
+
+        const rect = menu.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width - 4;
+        const maxY = window.innerHeight - rect.height - 4;
+        if (rect.left > maxX) menu.style.left = maxX + 'px';
+        if (rect.top > maxY) menu.style.top = maxY + 'px';
+
+        setTimeout(() => {
+          document.addEventListener('click', hideContextMenu, { once: true });
+        }, 0);
+      }
+
+      function hideContextMenu() {
+        const menu = document.getElementById('ctx-menu');
+        if (menu) menu.remove();
+      }
+
+      function refreshUI() {
+        updateUI();
+        updateSidebar();
+        emptyDetail();
+        updateFabActions();
+        updateLangUI();
+        const title = __('app.title');
+        document.getElementById('page-title').textContent = title;
+        document.getElementById('app-title').textContent = title;
+        document.querySelector('meta[property="og:title"]').content = title;
+        document.querySelector('meta[name="twitter:title"]').content = title;
+        document.querySelector('meta[name="description"]').content = __('app.desc');
+        document.querySelector('meta[property="og:description"]').content = __('app.desc');
+        document.querySelector('meta[name="twitter:description"]').content = __('app.desc');
+        document.getElementById('btn-add').textContent = __('header.add');
+        document.getElementById('btn-save').textContent = __('header.save');
+
+        document.getElementById('sidebar-toggle').title = __('header.sidebar');
+
+        const dd = document.getElementById('header-dropdown-menu');
+        if (dd) {
+          dd.querySelector('[data-action="add"]').textContent = __('header.add');
+          dd.querySelector('[data-action="save"]').textContent = __('header.save');
+          dd.querySelector('[data-action="load"]').textContent = __('header.load');
+          dd.querySelector('[data-action="export"]').textContent = __('header.export');
+          dd.querySelector('[data-action="import"]').textContent = __('header.import');
+          dd.querySelector('[data-action="merge"]').textContent = __('header.merge');
+          dd.querySelector('[data-action="sidebar"]').innerHTML = '☷ ' + __('header.sidebar');
+          dd.querySelector('[data-action="reset"]').innerHTML = '⟲ ' + __('tree.resetLayout');
+          dd.querySelector('[data-action="new"]').textContent = __('header.new');
+        }
+        document.getElementById('search-input').placeholder = __('search.placeholder');
+        document.getElementById('lang-en').classList.toggle('active', I18n.getLang() === 'en');
+        document.getElementById('lang-id').classList.toggle('active', I18n.getLang() === 'id');
+        TreeVisualizer.refresh();
+      }
+
+      function updateLangUI() {
+        const lang = I18n.getLang();
+        document.documentElement.lang = lang === 'id' ? 'id' : 'en';
+        document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+        document.getElementById('lang-id').classList.toggle('active', lang === 'id');
+      }
+
+      function onTreeClick(id) {
+        setActiveMember(id);
+      }
+
+      function setActiveMember(id) {
+        activeMemberId = id;
+        TreeVisualizer.centerOn(id);
+        updateSidebar();
+        showDetail(id);
+        updateFabActions();
+        if (window.innerWidth < 768 && sidebarVisible) toggleSidebar();
+      }
+
+      function updateFabActions() {
+        const editBtn = document.getElementById('fab-edit');
+        const deleteBtn = document.getElementById('fab-delete');
+        if (!editBtn) return;
+        const hasActive = !!activeMemberId;
+        editBtn.style.display = hasActive ? '' : 'none';
+        deleteBtn.style.display = hasActive ? '' : 'none';
+      }
+
+      function updateUI() {
+        const members = App.getState().members;
+        document.getElementById('member-count').textContent = __('app.members', members.length);
+      }
+
+      function updateSidebar() {
+        renderMemberList(App.getState().members);
+      }
+
+      function renderMemberList(members) {
+        const el = document.getElementById('search-results');
+        if (!members.length) {
+          el.innerHTML = `<div class="text-slate-500 text-sm text-center py-4">${__('search.noMembers')}</div>`;
+          return;
+        }
+        const sorted = [...members].sort((a, b) =>
+          (a.nama || '').localeCompare(b.nama || '')
+        );
+        el.innerHTML = sorted.map(m => {
+          const isActive = m.id === activeMemberId;
+          return `<div onclick="UI.setActiveMember('${m.id}')"
+            class="px-2 py-1.5 rounded-md cursor-pointer text-xs transition-colors ${isActive ? 'bg-blue-900/50 text-blue-300 border border-blue-800' : 'hover:bg-slate-700/50 text-slate-300 border border-transparent'}">
+            <div class="font-medium">${escapeHtml(m.nama || __('search.unknown'))}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${m.tanggal_lahir || ''}${m.pekerjaan ? ' \u00b7 ' + escapeHtml(m.pekerjaan) : ''}</div>
+          </div>`;
+        }).join('');
+      }
+
+      function showDetail(id) {
+        const el = document.getElementById('member-detail');
+        const m = App.getMember(id);
+        if (!m) {
+          el.innerHTML = `<div class="text-slate-500 text-sm text-center py-4">${__('detail.empty')}</div>`;
+          return;
+        }
+        const rel = App.getRelatives(id);
+        const father = m.father_id ? App.getMember(m.father_id) : null;
+        const mother = m.mother_id ? App.getMember(m.mother_id) : null;
+        el.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-white text-xs truncate flex-1">${escapeHtml(m.nama)}</span>
+            <div class="flex gap-0.5 flex-shrink-0">
+              <button onclick="UI.editMember('${m.id}')" class="btn btn-ghost text-[10px] px-1.5 py-0.5">${__('detail.edit')}</button>
+              <button onclick="UI.confirmDeleteMember('${m.id}')" class="btn btn-danger text-[10px] px-1.5 py-0.5">${__('detail.delete')}</button>
+            </div>
+          </div>
+          <div class="text-[11px] space-y-0.5 text-slate-400">
+            ${m.tanggal_lahir ? `<div>${__('detail.birth', m.tanggal_lahir)}</div>` : ''}
+            ${m.pekerjaan ? `<div>${__('detail.work', escapeHtml(m.pekerjaan))}</div>` : ''}
+            ${m.pendidikan ? `<div>${__('detail.education', escapeHtml(m.pendidikan))}</div>` : ''}
+            ${m.agama ? `<div>${__('detail.religion', escapeHtml(m.agama))}</div>` : ''}
+            ${m.status_perkawinan ? `<div>${__('detail.marital', escapeHtml(m.status_perkawinan))}</div>` : ''}
+            ${m.hobi ? `<div>${__('detail.hobby', escapeHtml(m.hobi))}</div>` : ''}
+            ${father ? `<div>${__('detail.father', escapeHtml(father.nama))}</div>` : ''}
+            ${mother ? `<div>${__('detail.mother', escapeHtml(mother.nama))}</div>` : ''}
+            ${rel.spouse ? `<div>${__('detail.spouse', escapeHtml(rel.spouse.nama))}</div>` : ''}
+            ${rel.children.length ? `<div>${__('detail.children', rel.children.map(c => escapeHtml(c.nama)).join(', '))}</div>` : ''}
+            ${m.catatan ? `<div class="mt-0.5 italic">${escapeHtml(m.catatan)}</div>` : ''}
+          </div>
+        `;
+      }
+
+      function emptyDetail() {
+        document.getElementById('member-detail').innerHTML =
+          `<div class="text-slate-500 text-sm text-center py-4">${__('detail.empty')}</div>`;
+      }
+
+      function emptySearchResults() {
+        renderMemberList(App.getState().members);
+      }
+
+      function searchMembers(query) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          if (!query.trim()) {
+            updateSidebar();
+            return;
+          }
+          const results = TreeVisualizer.searchMembers(query);
+          renderMemberList(results);
+        }, 200);
+      }
+
+      function newMember() {
+        showModal(__('modal.add'), null, (formData) => {
+          const m = App.addMember(formData);
+          updateUI();
+          updateSidebar();
+          setActiveMember(m.id);
+          return true;
+        });
+      }
+
+      function editMember(id) {
+        const m = App.getMember(id);
+        if (!m) return;
+        showModal(__('modal.edit'), m, (formData) => {
+          App.updateMember(id, formData);
+          updateUI();
+          updateSidebar();
+          setActiveMember(id);
+          return true;
+        });
+      }
+
+      function confirmDeleteMember(id) {
+        const m = App.getMember(id);
+        if (!m) return;
+        showConfirm(__('confirm.deleteTitle', m.nama), () => {
+          App.deleteMember(id);
+          updateUI();
+          updateSidebar();
+          if (activeMemberId === id) {
+            const all = App.getState().members;
+            if (all.length) setActiveMember(all[0].id);
+            else { activeMemberId = null; emptyDetail(); }
+          }
+          TreeVisualizer.refresh();
+        });
+      }
+
+      function showModal(title, existing, onSubmit) {
+        const isEdit = !!existing;
+        const m = existing || { nama: '', tanggal_lahir: '', father_id: '', mother_id: '', spouse_id: '', pekerjaan: '', pendidikan: '', hobi: '', status_perkawinan: '', agama: '', catatan: '' };
+        const allMembers = App.getState().members;
+
+        const html = `
+          <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+            <div class="modal-box max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-bold text-white">${escapeHtml(title)}</h2>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-white text-lg leading-none">&times;</button>
+              </div>
+              <form id="member-form" class="space-y-2" onsubmit="return false">
+                <input type="hidden" id="f-id" value="${m.id || ''}">
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.fullName')}</label>
+                  <input id="f-nama" class="form-input" value="${escapeHtml(m.nama)}" required>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.birth')}</label>
+                  <input id="f-tanggal_lahir" type="date" class="form-input" value="${m.tanggal_lahir || ''}">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.father')}</label>
+                    <select id="f-father_id" class="form-select">
+                      <option value="">${__('modal.none')}</option>
+                      ${allMembers.filter(mm => mm.id !== m.id).map(mm =>
+                        `<option value="${mm.id}" ${m.father_id === mm.id ? 'selected' : ''}>${escapeHtml(mm.nama)}</option>`
+                      ).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.mother')}</label>
+                    <select id="f-mother_id" class="form-select">
+                      <option value="">${__('modal.none')}</option>
+                      ${allMembers.filter(mm => mm.id !== m.id).map(mm =>
+                        `<option value="${mm.id}" ${m.mother_id === mm.id ? 'selected' : ''}>${escapeHtml(mm.nama)}</option>`
+                      ).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.spouse')}</label>
+                  <select id="f-spouse_id" class="form-select">
+                    <option value="">${__('modal.none')}</option>
+                    ${allMembers.filter(mm => mm.id !== m.id).map(mm =>
+                      `<option value="${mm.id}" ${m.spouse_id === mm.id ? 'selected' : ''}>${escapeHtml(mm.nama)}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.occupation')}</label>
+                    <input id="f-pekerjaan" class="form-input" value="${escapeHtml(m.pekerjaan)}">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.education')}</label>
+                    <input id="f-pendidikan" class="form-input" value="${escapeHtml(m.pendidikan)}">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.hobby')}</label>
+                    <input id="f-hobi" class="form-input" value="${escapeHtml(m.hobi)}">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.marital')}</label>
+                    <select id="f-status_perkawinan" class="form-select">
+                      <option value="">${__('modal.select')}</option>
+                      <option value="Belum Kawin" ${m.status_perkawinan === 'Belum Kawin' ? 'selected' : ''}>Belum Kawin</option>
+                      <option value="Kawin" ${m.status_perkawinan === 'Kawin' ? 'selected' : ''}>Kawin</option>
+                      <option value="Cerai Hidup" ${m.status_perkawinan === 'Cerai Hidup' ? 'selected' : ''}>Cerai Hidup</option>
+                      <option value="Cerai Mati" ${m.status_perkawinan === 'Cerai Mati' ? 'selected' : ''}>Cerai Mati</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.religion')}</label>
+                    <input id="f-agama" class="form-input" value="${escapeHtml(m.agama)}">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-0.5">${__('modal.notes')}</label>
+                  <textarea id="f-catatan" class="form-input" rows="1">${escapeHtml(m.catatan)}</textarea>
+                </div>
+                <div class="flex justify-end gap-1.5 pt-1">
+                  <button type="button" onclick="closeModal()" class="btn btn-ghost">${__('modal.cancel')}</button>
+                  <button type="submit" class="btn btn-primary">${isEdit ? __('modal.update') : __('modal.addBtn')}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        const area = document.getElementById('modal-area');
+        area.innerHTML = html;
+
+        createSearchableSelect('f-father_id');
+        createSearchableSelect('f-mother_id');
+        createSearchableSelect('f-spouse_id');
+
+        let autoSyncing = false;
+        document.getElementById('f-father_id').addEventListener('change', () => {
+          if (autoSyncing) return;
+          const fatherId = document.getElementById('f-father_id').value;
+          if (fatherId) {
+            const father = App.getMember(fatherId);
+            if (father && father.spouse_id) {
+              autoSyncing = true;
+              document.getElementById('f-mother_id').value = father.spouse_id;
+              document.getElementById('f-mother_id').dispatchEvent(new Event('change', { bubbles: true }));
+              autoSyncing = false;
+            }
+          }
+        });
+        document.getElementById('f-mother_id').addEventListener('change', () => {
+          if (autoSyncing) return;
+          const motherId = document.getElementById('f-mother_id').value;
+          if (motherId) {
+            const mother = App.getMember(motherId);
+            if (mother && mother.spouse_id) {
+              autoSyncing = true;
+              document.getElementById('f-father_id').value = mother.spouse_id;
+              document.getElementById('f-father_id').dispatchEvent(new Event('change', { bubbles: true }));
+              autoSyncing = false;
+            }
+          }
+        });
+
+        document.getElementById('member-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const nama = document.getElementById('f-nama').value.trim();
+          if (!nama) { alert(__('modal.nameReq')); return; }
+          const formData = {
+            nama,
+            tanggal_lahir: document.getElementById('f-tanggal_lahir').value,
+            father_id: document.getElementById('f-father_id').value || null,
+            mother_id: document.getElementById('f-mother_id').value || null,
+            spouse_id: document.getElementById('f-spouse_id').value || null,
+            pekerjaan: document.getElementById('f-pekerjaan').value,
+            pendidikan: document.getElementById('f-pendidikan').value,
+            hobi: document.getElementById('f-hobi').value,
+            status_perkawinan: document.getElementById('f-status_perkawinan').value,
+            agama: document.getElementById('f-agama').value,
+            catatan: document.getElementById('f-catatan').value,
+          };
+          if (onSubmit(formData)) closeModal();
+        });
+      }
+
+      function showConfirm(msg, onConfirm) {
+        const html = `
+          <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+            <div class="modal-box text-center">
+              <p class="text-white text-sm mb-4">${escapeHtml(msg)}</p>
+              <div class="flex justify-center gap-2">
+                <button onclick="closeModal()" class="btn btn-ghost">${__('confirm.cancel')}</button>
+                <button id="confirm-btn" class="btn btn-danger">${__('confirm.delete')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        const area = document.getElementById('modal-area');
+        area.innerHTML = html;
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+          onConfirm();
+          closeModal();
+        });
+      }
+
+      function closeModal() {
+        document.getElementById('modal-area').innerHTML = '';
+      }
+      window.closeModal = closeModal;
+
+      async function promptPassword(title, buttonLabel) {
+        return new Promise((resolve) => {
+          function cancel() { area.innerHTML = ''; resolve(null); }
+          const html = `
+            <div class="modal-overlay" id="pwd-overlay">
+              <div class="modal-box">
+                <h2 class="text-sm font-bold text-white mb-3">${escapeHtml(title)}</h2>
+                <input id="pwd-input" type="password" class="form-input mb-3" placeholder="${__('pwd.placeholder')}" autofocus>
+                <div class="flex justify-end gap-1.5">
+                  <button id="pwd-cancel" class="btn btn-ghost">${__('modal.cancel')}</button>
+                  <button id="pwd-submit" class="btn btn-primary">${escapeHtml(buttonLabel)}</button>
+                </div>
+              </div>
+            </div>
+          `;
+          const area = document.getElementById('modal-area');
+          area.innerHTML = html;
+
+          const doSubmit = () => {
+            const password = document.getElementById('pwd-input').value;
+            if (!password) { alert(__('pwd.required')); return; }
+            area.innerHTML = '';
+            resolve(password);
+          };
+
+          document.getElementById('pwd-submit').addEventListener('click', doSubmit);
+          document.getElementById('pwd-cancel').addEventListener('click', cancel);
+          document.getElementById('pwd-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doSubmit();
+          });
+          document.getElementById('pwd-overlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) cancel();
+          });
+        });
+      }
+
+      function showError(msg) {
+        const html = `
+          <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+            <div class="modal-box text-center">
+              <div class="text-red-400 text-2xl mb-2">\u2715</div>
+              <p class="text-white text-sm mb-4">${escapeHtml(msg)}</p>
+              <button onclick="closeModal()" class="btn btn-primary">${__('error.ok')}</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('modal-area').innerHTML = html;
+      }
+
+      function showSuccess(msg) {
+        const html = `
+          <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+            <div class="modal-box text-center">
+              <div class="text-green-400 text-2xl mb-2">\u2713</div>
+              <p class="text-white text-sm mb-4">${escapeHtml(msg)}</p>
+              <button onclick="closeModal()" class="btn btn-primary">${__('error.ok')}</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('modal-area').innerHTML = html;
+      }
+
+      async function saveLocal() {
+        if (!App.getState().members.length) {
+          showError(__('error.emptyTree'));
+          return;
+        }
+        const cached = App.getCachedPassword();
+        const password = cached || await promptPassword(__('pwd.title.save'), __('header.save'));
+        if (!password) return;
+        try {
+          await App.saveToLocal(password);
+          showSuccess(__('success.saved'));
+        } catch (e) {
+          showError(__('error.exportFail', e.message));
+        }
+      }
+
+      async function loadLocal() {
+        if (!App.hasLocalData()) {
+          showError('No saved data in browser storage.');
+          return;
+        }
+        const password = await promptPassword(__('pwd.title.load'), __('header.load'));
+        if (!password) return;
+        try {
+          await App.loadFromLocal(password);
+          refreshUI();
+          const members = App.getState().members;
+          if (members.length) setActiveMember(members[0].id);
+          showSuccess(__('success.loaded', App.getState().tree_name));
+        } catch (err) {
+          showError(err.message);
+        }
+      }
+
+      async function exportFile() {
+        if (!App.getState().members.length) {
+          showError(__('error.emptyTree'));
+          return;
+        }
+        const password = await promptPassword(__('pwd.title.export'), __('header.export'));
+        if (!password) return;
+        try {
+          await App.exportFile(password);
+          showSuccess(__('success.exported'));
+        } catch (e) {
+          showError(__('error.exportFail', e.message));
+        }
+      }
+
+      async function importFile() {
+        const password = await promptPassword(__('pwd.title.import'), __('header.import'));
+        if (!password) return;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.enc';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          try {
+            await App.importFile(file, password);
+            refreshUI();
+            const members = App.getState().members;
+            if (members.length) setActiveMember(members[0].id);
+            showSuccess(__('success.imported', App.getState().tree_name));
+          } catch (err) {
+            showError(err.message);
+          }
+        };
+        input.click();
+      }
+
+      async function mergeFile() {
+        const password = await promptPassword(__('pwd.title.merge'), __('header.import'));
+        if (!password) return;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.enc';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          try {
+            const result = await App.mergeFile(file, password);
+            refreshUI();
+            showSuccess(__('success.merged', result.mergedCount, result.mergedTree.tree_name));
+            if (App.getState().members.length) setActiveMember(App.getState().members[0].id);
+          } catch (err) {
+            showError(err.message);
+          }
+        };
+        input.click();
+      }
+
+      function newTree() {
+        if (App.getState().members.length) {
+          showConfirm(__('confirm.newTree'), () => {
+            App.resetState();
+            activeMemberId = null;
+            refreshUI();
+            emptyDetail();
+            TreeVisualizer.refresh();
+          });
+        } else {
+          App.resetState();
+          refreshUI();
+        }
+      }
+
+      function resetLayout() {
+        TreeVisualizer.resetPositions();
+      }
+
+      let sidebarVisible = true;
+
+      function toggleSidebar() {
+        sidebarVisible = !sidebarVisible;
+        const sb = document.getElementById('sidebar');
+        const ov = document.getElementById('sidebar-overlay');
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+          sb.classList.toggle('mobile-sidebar', true);
+          sb.classList.toggle('show', sidebarVisible);
+          ov.classList.toggle('show', sidebarVisible);
+        } else {
+          sb.classList.toggle('hidden-sidebar', !sidebarVisible);
+        }
+      }
+
+      function handleSidebarResize() {
+        const sb = document.getElementById('sidebar');
+        const ov = document.getElementById('sidebar-overlay');
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+          sb.classList.remove('hidden-sidebar');
+          sb.classList.add('mobile-sidebar');
+          if (!sidebarVisible) sb.classList.remove('show');
+        } else {
+          sb.classList.remove('mobile-sidebar', 'show');
+          ov.classList.remove('show');
+          sb.classList.toggle('hidden-sidebar', !sidebarVisible);
+        }
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function createSearchableSelect(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const opts = Array.from(select.options);
+        select.style.display = 'none';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'searchable-select';
+
+        const input = document.createElement('input');
+        input.className = 'form-input';
+        input.type = 'text';
+        input.autocomplete = 'off';
+        input.readOnly = true;
+        input.placeholder = opts[0] ? opts[0].text : '';
+
+        const selectedOpt = opts.find(o => o.selected);
+        if (selectedOpt && selectedOpt.value) {
+          input.value = selectedOpt.text;
+          input.dataset.value = selectedOpt.value;
+        }
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'ss-dropdown';
+
+        function renderOptions(filter) {
+          const q = (filter || '').toLowerCase().trim();
+          dropdown.innerHTML = '';
+          let shown = 0;
+          for (const o of opts) {
+            if (!q || o.text.toLowerCase().includes(q)) {
+              if (o.value || o.text !== '— None —') {
+                const div = document.createElement('div');
+                div.className = 'ss-option';
+                if (o.selected && o.value) div.classList.add('selected');
+                if (!o.value) div.classList.add('empty');
+                div.textContent = o.text;
+                div.dataset.value = o.value;
+                div.addEventListener('click', () => {
+                  select.value = o.value;
+                  select.dispatchEvent(new Event('change', { bubbles: true }));
+                  input.value = o.value ? o.text : '';
+                  input.dataset.value = o.value || '';
+                  input.readOnly = true;
+                  dropdown.classList.remove('show');
+                  opts.forEach(opt => opt.selected = opt.value === o.value);
+                });
+                dropdown.appendChild(div);
+                shown++;
+              }
+            }
+          }
+          if (!shown) {
+            const div = document.createElement('div');
+            div.className = 'ss-option empty';
+            div.textContent = '—';
+            dropdown.appendChild(div);
+          }
+        }
+
+        renderOptions('');
+
+        input.addEventListener('focus', () => {
+          input.readOnly = false;
+          input.value = '';
+          dropdown.classList.add('show');
+          renderOptions('');
+        });
+
+        input.addEventListener('input', () => {
+          dropdown.classList.add('show');
+          renderOptions(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+          setTimeout(() => {
+            dropdown.classList.remove('show');
+            if (!input.dataset.value) {
+              input.value = '';
+              select.value = '';
+            } else {
+              const opt = opts.find(o => o.value === input.dataset.value);
+              if (opt) input.value = opt.text;
+            }
+            input.readOnly = true;
+          }, 200);
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            dropdown.classList.remove('show');
+            input.blur();
+          }
+          if (e.key === 'Enter') {
+            const vis = dropdown.querySelectorAll('.ss-option:not(.empty)');
+            if (vis.length === 1) {
+              vis[0].click();
+            }
+          }
+        });
+
+        select.addEventListener('change', () => {
+          const opt = opts.find(o => o.value === select.value);
+          if (opt) {
+            input.value = opt.value ? opt.text : '';
+            input.dataset.value = opt.value || '';
+          }
+        });
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(dropdown);
+        select.parentNode.insertBefore(wrapper, select.nextSibling);
+      }
+
+      function toggleHeaderDropdown() {
+        const dd = document.getElementById('header-dropdown-menu');
+        if (!dd) return;
+        const shown = dd.style.display === 'block';
+        dd.style.display = shown ? 'none' : 'block';
+        if (!shown) {
+          const closer = (e) => {
+            if (!e.target.closest('#header-dropdown-wrapper')) {
+              dd.style.display = 'none';
+              document.removeEventListener('click', closer);
+            }
+          };
+          setTimeout(() => document.addEventListener('click', closer), 0);
+        }
+      }
+
+      document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+      window.addEventListener('resize', handleSidebarResize);
+      document.getElementById('header-dropdown-toggle').addEventListener('click', toggleHeaderDropdown);
+
+      const fabToggle = document.getElementById('fab-toggle');
+      const fabActions = document.getElementById('fab-actions');
+      const fabBackdrop = document.getElementById('fab-backdrop');
+      if (fabToggle) {
+        fabToggle.addEventListener('click', () => {
+          const open = fabActions.classList.toggle('open');
+          fabToggle.classList.toggle('open', open);
+          fabBackdrop.classList.toggle('show', open);
+        });
+        fabBackdrop.addEventListener('click', () => {
+          fabActions.classList.remove('open');
+          fabToggle.classList.remove('open');
+          fabBackdrop.classList.remove('show');
+        });
+        document.getElementById('fab').querySelectorAll('.fab-action').forEach(btn => {
+          btn.addEventListener('click', () => {
+            fabActions.classList.remove('open');
+            fabToggle.classList.remove('open');
+            fabBackdrop.classList.remove('show');
+          });
+        });
+      }
+
+      function getActiveId() { return activeMemberId; }
+
+      return {
+        init, refreshUI, setActiveMember, newMember, editMember, confirmDeleteMember,
+        searchMembers, saveLocal, loadLocal, exportFile, importFile, mergeFile, newTree,
+        resetLayout, closeModal, toggleSidebar, getActiveId
+      };
+    })();
+
+      const ddActions = {
+        'add': () => UI.newMember(),
+        'save': () => UI.saveLocal(),
+        'load': () => UI.loadLocal(),
+        'export': () => UI.exportFile(),
+        'import': () => UI.importFile(),
+        'merge': () => UI.mergeFile(),
+        'sidebar': () => UI.toggleSidebar(),
+        'reset': () => UI.resetLayout(),
+        'lang-en': () => { I18n.setLang('en'); UI.refreshUI(); },
+        'lang-id': () => { I18n.setLang('id'); UI.refreshUI(); },
+        'new': () => UI.newTree(),
+      };
+      const dd = document.getElementById('header-dropdown-menu');
+      for (const [action, fn] of Object.entries(ddActions)) {
+        const el = dd.querySelector(`[data-action="${action}"]`);
+        if (el) el.addEventListener('click', () => { dd.style.display = 'none'; fn(); });
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        UI.init();
+      });
+  </script>
+</body>
+</html>
