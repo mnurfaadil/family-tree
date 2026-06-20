@@ -19,7 +19,7 @@ A privacy-first, offline-capable family tree editor that encrypts all data local
 - **Smart parent auto-fill** — Selecting a father auto-selects his spouse as mother (and vice versa)
 - **Searchable selects** — Father/mother/spouse dropdowns in the modal include filter-as-you-type
 - **Sidebar** — Toggleable member list sidebar; overlays on mobile, auto-closes on selection
-- **Floating action buttons** — Speed-dial FAB on mobile (reset layout, add member, save); separate edit/delete FABs appear only when a member is active
+- **Floating action buttons** — Speed-dial FAB on mobile (reset layout, add member, save); edit/hapus text buttons appear on the bottom-left when the sidebar is closed
 
 ## Tech Stack
 

@@ -131,11 +131,11 @@ const TreeVisualizer = (() => {
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 500;
 
-    const nodeW = 110;
-    const nodeH = 32;
-    const hGap = 10;
-    const vGap = 40;
-    const levelVGap = 55;
+    const nodeW = 160;
+    const nodeH = 48;
+    const hGap = 24;
+    const vGap = 50;
+    const levelVGap = 72;
 
     function getLevel(id) {
       if (id === memberId) return 0;
@@ -275,7 +275,7 @@ const TreeVisualizer = (() => {
     nodeGroups.append('rect')
       .attr('width', nodeW)
       .attr('height', nodeH)
-      .attr('rx', 6)
+      .attr('rx', 8)
       .attr('fill', m => {
         if (m.id === memberId) return '#3b82f6';
         if (rel.spouse && m.id === rel.spouse.id) return '#f59e0b';
@@ -295,24 +295,26 @@ const TreeVisualizer = (() => {
 
     nodeGroups.append('text')
       .attr('x', nodeW / 2)
-      .attr('y', m => m._mergedFrom ? nodeH / 2 - 5 : nodeH / 2)
+      .attr('y', m => m._mergedFrom ? nodeH / 2 - 6 : nodeH / 2)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('fill', '#fff')
-      .attr('font-size', '10px')
-      .attr('font-weight', m => m.id === memberId ? 'bold' : 'normal')
+      .attr('font-size', '12px')
+      .attr('font-family', "'Plus Jakarta Sans', sans-serif")
+      .attr('font-weight', m => m.id === memberId ? 'bold' : '500')
       .text(m => {
         const name = m.nama || '?';
-        return name.length > 16 ? name.slice(0, 14) + '..' : name;
+        return name.length > 20 ? name.slice(0, 18) + '..' : name;
       });
 
     nodeGroups.filter(m => m._mergedFrom)
       .append('text')
       .attr('x', nodeW / 2)
-      .attr('y', nodeH - 4)
+      .attr('y', nodeH - 6)
       .attr('text-anchor', 'middle')
       .attr('fill', '#fb923c')
-      .attr('font-size', '7px')
+      .attr('font-size', '8px')
+      .attr('font-family', "'Plus Jakarta Sans', sans-serif")
       .attr('font-weight', 'bold')
       .text('MERGED');
 
